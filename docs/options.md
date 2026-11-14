@@ -590,6 +590,9 @@ liable for any HDR-induced eye damage. Defaults to `no`.
 
 Data source to use when tone-mapping. Setting this to a specific value allows
 overriding the default metadata preference logic. Defaults to `any`.
+Static HDR10 `MaxCLL` and `MaxFALL` provide title-wide content peak and average
+luminance levels; per-scene HDR10+ or CIE-Y metadata takes precedence when
+available.
 
 ### `tone_lut_size=<0..4096>`
 

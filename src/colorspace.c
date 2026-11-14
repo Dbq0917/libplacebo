@@ -877,9 +877,22 @@ void pl_color_space_nominal_luma_ex(const struct pl_nominal_luma_params *params)
         // Initialize from static HDR10 metadata, in all cases
         min_luma = pl_hdr_rescale(PL_HDR_NITS, scaling, csp->hdr.min_luma);
         max_luma = pl_hdr_rescale(PL_HDR_NITS, scaling, csp->hdr.max_luma);
-        // Fall back to MaxCLL if mastering display max luminance is missing
-        if (!max_luma && csp->hdr.max_cll)
+
+        // PQ content light levels describe the actual signal range, which is
+        // more useful for tone-mapping than the mastering display's limits.
+        // MaxCLL and MaxFALL are constant for the entire title, so this still
+        // costs at most one tone-mapping LUT update per source.
+        if (csp->transfer == PL_COLOR_TRC_PQ) {
+            if (csp->hdr.max_cll)
+                max_luma = pl_hdr_rescale(PL_HDR_NITS, scaling,
+                                          csp->hdr.max_cll);
+            if (csp->hdr.max_fall)
+                avg_luma = pl_hdr_rescale(PL_HDR_NITS, scaling,
+                                          csp->hdr.max_fall);
+        } else if (!max_luma && csp->hdr.max_cll) {
+            // Fall back to MaxCLL if mastering display max luminance is missing
             max_luma = pl_hdr_rescale(PL_HDR_NITS, scaling, csp->hdr.max_cll);
+        }
     }
 
     if (metadata_compat(params->metadata, PL_HDR_METADATA_HDR10PLUS) &&
@@ -942,9 +955,16 @@ void pl_color_space_infer(struct pl_color_space *space)
     if (!space->transfer)
         space->transfer = PL_COLOR_TRC_BT_1886;
 
-    // Sanitize the static HDR metadata
+    // Sanitize the static HDR metadata. If a mastering peak is already
+    // tagged, validate that instead of replacing it with content light levels.
+    struct pl_color_space base = *space;
+    if (space->hdr.max_luma) {
+        base.hdr.max_cll = 0;
+        base.hdr.max_fall = 0;
+    }
+
     pl_color_space_nominal_luma_ex(pl_nominal_luma_params(
-        .color      = space,
+        .color      = &base,
         .metadata   = PL_HDR_METADATA_HDR10,
         .scaling    = PL_HDR_NITS,
         .out_max    = &space->hdr.max_luma,

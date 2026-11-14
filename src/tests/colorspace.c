@@ -714,6 +714,8 @@ int main()
         .hdr = {
             .min_luma  = 0.005,
             .max_luma  = 4000,
+            .max_cll   = 600,
+            .max_fall  = 120,
             .scene_max = {596.69, 1200, 500},
             .scene_avg = 300,
         },
@@ -726,10 +728,20 @@ int main()
     REQUIRE(!pl_hdr_metadata_contains(&hdr10plus.hdr, PL_HDR_METADATA_CIE_Y));
 
     TEST_METADATA(hdr10plus, PL_HDR_METADATA_NONE,      PL_COLOR_HDR_BLACK, 10000, 0);
-    TEST_METADATA(hdr10plus, PL_HDR_METADATA_CIE_Y,     0.005, 4000, 0);
-    TEST_METADATA(hdr10plus, PL_HDR_METADATA_HDR10,     0.005, 4000, 0);
+    TEST_METADATA(hdr10plus, PL_HDR_METADATA_CIE_Y,     0.005, 600, 120);
+    TEST_METADATA(hdr10plus, PL_HDR_METADATA_HDR10,     0.005, 600, 120);
     TEST_METADATA(hdr10plus, PL_HDR_METADATA_HDR10PLUS, 0.005, 1000, 250);
     TEST_METADATA(hdr10plus, PL_HDR_METADATA_ANY,       0.005, 1000, 250);
+
+    // Inferring a color space must not replace an explicit mastering peak
+    // with the content light level.
+    struct pl_color_space inferred = hdr10plus;
+    pl_color_space_infer(&inferred);
+    REQUIRE_FEQ(inferred.hdr.max_luma, 4000, 1e-5);
+
+    inferred.hdr.max_luma = 20000;
+    pl_color_space_infer(&inferred);
+    REQUIRE_FEQ(inferred.hdr.max_luma, 10000, 1e-5);
 
     const struct pl_color_space dovi = {
         .primaries = PL_COLOR_PRIM_BT_2020,

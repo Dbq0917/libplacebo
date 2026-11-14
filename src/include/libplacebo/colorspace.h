@@ -449,8 +449,10 @@ struct pl_hdr_metadata {
     struct pl_raw_primaries prim;   // mastering display primaries
     float min_luma, max_luma;       // min/max luminance (in cd/m²)
 
-    // Content light level. `max_cll` is used as a fallback when mastering
-    // display max luminance metadata is unavailable.
+    // Content light level. For PQ content, these are preferred over the
+    // mastering display limits when tone-mapping, as they describe the actual
+    // signal range. `max_cll` is also used as a fallback when the mastering
+    // display max luminance is unavailable.
     float max_cll;                  // max content light level (in cd/m²)
     float max_fall;                 // max frame average light level (in cd/m²)
 
@@ -477,7 +479,8 @@ PL_API void pl_hdr_metadata_merge(struct pl_hdr_metadata *orig,
 
 // Returns `true` if `data` contains a complete set of a given metadata type.
 // Note: for PL_HDR_METADATA_HDR10, only `min_luma` and `max_luma` are
-// considered - CLL/FALL and primaries are irrelevant for HDR tone-mapping.
+// required; CLL/FALL are optional content light metadata used when
+// tone-mapping.
 PL_API bool pl_hdr_metadata_contains(const struct pl_hdr_metadata *data,
                                      enum pl_hdr_metadata_type type);
 
